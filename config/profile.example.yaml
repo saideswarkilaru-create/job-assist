@@ -1,0 +1,26 @@
+# Your applicant details, used by apply-assist (Phase 5) to fill standard form fields.
+# Copy this file to config/profile.yaml and fill it in (a Profile page to edit it arrives in Phase 5).
+# NEVER put passwords here. You log in to sites yourself in the app's browser window.
+
+first_name: ""
+last_name: ""
+email: ""
+phone: ""
+city: ""
+state: ""
+country: "United States"
+zip: ""
+linkedin_url: ""
+github_url: ""
+portfolio_url: ""
+
+work_authorization: ""        # e.g. "US Citizen", "Green Card", "H1B (needs transfer)"
+requires_sponsorship: false
+willing_to_relocate: false
+notice_period: ""             # e.g. "2 weeks"
+expected_salary: ""           # leave empty to skip
+years_of_experience: ""
+
+# Optional answers to common screening questions
+answers:
+  how_did_you_hear: "Job board"

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+logs/
+resumes/
+tailored/
+browser-profile/
+config/profile.yaml
+web/node_modules/
+web/dist/
+web/.angular/
+release/
+.pytest_cache/
+*.log

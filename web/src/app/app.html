@@ -1,0 +1,56 @@
+<mat-sidenav-container class="shell">
+  <mat-sidenav mode="side" opened class="side">
+    <div class="brand"><mat-icon>work_history</mat-icon> Job Assist</div>
+    <nav>
+      @for (n of nav; track n.path) {
+        <a [routerLink]="n.path" routerLinkActive="active" class="nav-link">
+          <mat-icon>{{ n.icon }}</mat-icon><span>{{ n.label }}</span>
+        </a>
+      }
+    </nav>
+    @if (api.meta(); as m) {
+      @if (m.analysis_engine === 'claude' && !m.claude_cli) {
+        <div class="side-warn">Analysis engine is set to Claude, but Claude Code isn't installed. The built-in engine is used instead.</div>
+      }
+    }
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar class="top">
+      @if (run(); as r) {
+        <div class="run-chip" [class.wait]="r.status === 'waiting_user'">
+          <mat-icon>{{ r.status === 'waiting_user' ? 'pan_tool' : 'sync' }}</mat-icon>
+          <span class="run-text">
+            <b>{{ label(r) }}</b>
+            <span class="muted"> · {{ r.message || r.status }} · {{ r.jobs_matched }} matched / {{ r.jobs_seen }} seen</span>
+          </span>
+          <a mat-button routerLink="/runs">Log</a>
+          <button mat-button (click)="stop(r)">Stop</button>
+        </div>
+      } @else {
+        <span class="muted">No run in progress</span>
+      }
+      <span class="spacer"></span>
+      <button mat-stroked-button (click)="login()" [disabled]="!!run()"
+        matTooltip="Opens the app's own browser so you can sign in to job sites once. This app never stores or types passwords.">
+        <mat-icon>login</mat-icon> Log in to sites
+      </button>
+      <button mat-flat-button (click)="runAll()" [disabled]="!!run()">
+        <mat-icon>play_arrow</mat-icon> Run all now
+      </button>
+    </mat-toolbar>
+    @if (run()) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+    @if (waiting(); as w) {
+      <div class="banner">
+        <mat-icon>pan_tool</mat-icon>
+        <span>{{ w.message }}</span>
+      </div>
+    }
+    <app-apply-review />
+    <main class="content">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

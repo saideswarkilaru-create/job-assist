@@ -1,0 +1,11 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+playwright>=1.47
+python-docx>=1.1
+pyyaml>=6.0
+psutil>=6.0
+keyring>=25.0
+docx2pdf>=0.1.8; sys_platform == "win32"
+mammoth>=1.8
+pdf2docx>=0.5.8
