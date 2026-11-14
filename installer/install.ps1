@@ -1,18 +1,44 @@
 # Job Assist installer. Run by double-clicking "Install Job Assist.bat".
 # Installs only what is missing, for the current user (no admin rights needed), then creates shortcuts.
 # Safe to run again at any time (it repairs / updates).
+# Everything it prints is also saved to install-log.txt in the app folder.
+#
+# Switches (for testing): -NoShortcuts (don't touch Desktop / Start menu), -NoPause (never wait for Enter),
+#                         -NoStart (don't offer to start the app at the end)
+param([switch]$NoShortcuts, [switch]$NoPause, [switch]$NoStart)
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
-$Host.UI.RawUI.WindowTitle = 'Job Assist setup'
+try { $Host.UI.RawUI.WindowTitle = 'Job Assist setup' } catch { }
+$Log = Join-Path $Root 'install-log.txt'
+try { Start-Transcript -Path $Log -Force | Out-Null } catch { $Log = Join-Path $env:TEMP 'JobAssist-install-log.txt'; try { Start-Transcript -Path $Log -Force | Out-Null } catch { } }
+Write-Host "Job Assist setup - $(Get-Date -Format 'yyyy-MM-dd HH:mm') - Windows $([Environment]::OSVersion.Version) - PowerShell $($PSVersionTable.PSVersion) - folder: $Root"
 
+function Pause-IfAllowed { if (-not $NoPause) { Write-Host "`nPress Enter to close."; [void](Read-Host) } }
 function Say($msg, $color = 'Cyan') { Write-Host "`n>> $msg" -ForegroundColor $color }
 function Fail($msg) {
     Write-Host "`n!! $msg" -ForegroundColor Red
-    Write-Host "`nPress Enter to close." ; [void](Read-Host)
+    Write-Host "   A log was saved to: $Log"
+    try { Stop-Transcript | Out-Null } catch { }
+    Pause-IfAllowed
     exit 1
 }
+
+# Any unexpected error: explain it, keep the window open, keep the log.
+trap {
+    Write-Host "`n!! Setup stopped because of an unexpected problem:" -ForegroundColor Red
+    Write-Host "   $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "   (at line $($_.InvocationInfo.ScriptLineNumber): $($_.InvocationInfo.Line.Trim()))"
+    Write-Host "`n   Try running 'Install Job Assist.bat' once more. If it fails again, send this file"
+    Write-Host "   to whoever gave you Job Assist: $Log"
+    try { Stop-Transcript | Out-Null } catch { }
+    Pause-IfAllowed
+    exit 1
+}
+
+if ($PSVersionTable.PSVersion.Major -lt 5) { Fail "Windows PowerShell 5 or newer is needed (this PC has $($PSVersionTable.PSVersion)). Please update Windows." }
+if ($Root -match '[%!&^]') { Fail "Please move the JobAssist folder to a simpler place (e.g. Documents\JobAssist). Its path contains special characters: $Root" }
 function Has-Winget { return [bool](Get-Command winget -ErrorAction SilentlyContinue) }
 function Refresh-Path {
     $env:Path = [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + [Environment]::GetEnvironmentVariable('Path', 'Machine')
@@ -79,7 +105,10 @@ else {
 # ---------------------------------------------------------------- 4. Screens (prebuilt in releases)
 $ui = Join-Path $Root 'web\dist\web\browser\index.html'
 if (-not (Test-Path $ui)) {
-    Say 'Building the app screens (one time)...' 'Yellow'
+    Write-Host "   This looks like the source code (e.g. GitHub 'Code > Download ZIP'), which has no ready-made screens."
+    Write-Host "   For a quicker install, use JobAssist.zip from the Releases page instead:"
+    Write-Host "   https://github.com/saideswarkilaru-create/job-assist/releases/latest"
+    Say 'Building the app screens (one time, needs Node.js)...' 'Yellow'
     if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
         if (-not (Has-Winget)) { Fail 'The app screens are missing. Ask for the release .zip (it includes them).' }
         winget install -e --id OpenJS.NodeJS.LTS --scope user --silent --accept-package-agreements --accept-source-agreements | Out-Host
@@ -95,19 +124,28 @@ if (-not (Test-Path $ui)) {
 & $venvPy -c "import sys; sys.path.insert(0, r'$Root'); from jobassist import db; db.init_db()"
 if ($LASTEXITCODE -ne 0) { Fail 'Could not create the database.' }
 
-Say 'Creating shortcuts...'
-$shell = New-Object -ComObject WScript.Shell
-$targets = @([Environment]::GetFolderPath('Desktop'), (Join-Path ([Environment]::GetFolderPath('Programs')) ''))
-foreach ($dir in $targets) {
-    $lnk = $shell.CreateShortcut((Join-Path $dir 'Job Assist.lnk'))
-    $lnk.TargetPath = Join-Path $Root 'start.bat'
-    $lnk.WorkingDirectory = $Root
-    $lnk.WindowStyle = 7   # start minimized; the app opens in your browser
-    $lnk.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"
-    $lnk.Description = 'Job Assist: find, screen and apply to jobs'
-    $lnk.Save()
+if ($NoShortcuts) {
+    Say 'Skipping shortcuts (-NoShortcuts).'
+} else {
+    Say 'Creating shortcuts...'
+    $shell = New-Object -ComObject WScript.Shell
+    $targets = @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))
+    foreach ($dir in $targets) {
+        if (-not $dir -or -not (Test-Path $dir)) { continue }
+        $lnk = $shell.CreateShortcut((Join-Path $dir 'Job Assist.lnk'))
+        $lnk.TargetPath = Join-Path $Root 'start.bat'
+        $lnk.WorkingDirectory = $Root
+        $lnk.WindowStyle = 7   # start minimized; the app opens in your browser
+        $lnk.IconLocation = "$env:SystemRoot\System32\imageres.dll,109"
+        $lnk.Description = 'Job Assist: find, screen and apply to jobs'
+        $lnk.Save()
+    }
 }
 
 Say 'All set! Double-click "Job Assist" on your Desktop to start.' 'Green'
-$go = Read-Host 'Start Job Assist now? (Y/n)'
-if ($go -ne 'n' -and $go -ne 'N') { Start-Process -FilePath (Join-Path $Root 'start.bat') -WorkingDirectory $Root -WindowStyle Minimized }
+try { Stop-Transcript | Out-Null } catch { }
+if (-not $NoStart -and -not $NoPause) {
+    $go = Read-Host 'Start Job Assist now? (Y/n)'
+    if ($go -ne 'n' -and $go -ne 'N') { Start-Process -FilePath (Join-Path $Root 'start.bat') -WorkingDirectory $Root -WindowStyle Minimized }
+}
+exit 0

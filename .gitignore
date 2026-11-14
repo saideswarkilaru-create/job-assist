@@ -13,3 +13,4 @@ web/.angular/
 release/
 .pytest_cache/
 *.log
+install-log.txt
