@@ -6,16 +6,22 @@ set "HERE=%~dp0"
 cd /d "%HERE%"
 title Job Assist setup
 
+rem Use Windows' fixed folders: some PCs have a damaged PATH ("'powershell' is not recognized").
+set "SYS=%SystemRoot%\System32"
+set "PATH=%SYS%;%SystemRoot%;%SYS%\Wbem;%SYS%\WindowsPowerShell\v1.0;%PATH%"
+set "PS=%SYS%\WindowsPowerShell\v1.0\powershell.exe"
+if not exist "%PS%" for /f "delims=" %%p in ('"%SYS%\where.exe" pwsh 2^>nul') do set "PS=%%p"
+
 rem 1) Still inside the .zip? (Windows runs it from a temporary copy and the other files are missing.)
-echo "%HERE%" | findstr /i /c:".zip\\" >nul && goto :inzip
+echo "%HERE%" | "%SYS%\findstr.exe" /i /c:".zip\\" >nul && goto :inzip
 
 rem 2) The installer script must sit next to this file.
 if not exist "%HERE%installer\install.ps1" goto :missing
 
-rem 3) Windows PowerShell must be available.
-where powershell >nul 2>nul || goto :nops
+rem 3) PowerShell must be available.
+if not exist "%PS%" goto :nops
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%HERE%installer\install.ps1" %*
+"%PS%" -NoProfile -ExecutionPolicy Bypass -File "%HERE%installer\install.ps1" %*
 if errorlevel 1 (
   echo.
   echo  Setup did not finish. Details are in: %HERE%install-log.txt
@@ -50,8 +56,9 @@ exit /b 1
 
 :nops
 echo.
-echo  Windows PowerShell is missing or blocked on this PC (often by antivirus or a work policy).
-echo  Job Assist needs it to install. Ask the PC's owner or IT to allow powershell.exe, then try again.
+echo  Windows PowerShell was not found on this PC (expected at %SYS%\WindowsPowerShell).
+echo  It may be blocked by antivirus or a work policy. Ask the PC's owner or IT to allow
+echo  powershell.exe, then try again.
 echo.
 pause
 exit /b 1

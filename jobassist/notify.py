@@ -10,6 +10,8 @@ import subprocess
 import sys
 from xml.sax.saxutils import escape
 
+from . import winpaths
+
 APP_URL = f"http://127.0.0.1:{os.environ.get('JOBASSIST_PORT', '8770')}"
 _APP_ID = r"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe"
 _PS = ("[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null;"
@@ -31,7 +33,7 @@ def toast(title: str, body: str, path: str = "/today") -> bool:
         return False
     env = {**os.environ, "JA_TOAST": toast_xml(title, body, APP_URL + path)}
     try:
-        r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", _PS],
+        r = subprocess.run([winpaths.powershell(), "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", _PS],
                            env=env, capture_output=True, timeout=20,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         return r.returncode == 0

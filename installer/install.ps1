@@ -8,6 +8,10 @@
 param([switch]$NoShortcuts, [switch]$NoPause, [switch]$NoStart)
 
 $ErrorActionPreference = 'Stop'
+# Some PCs have a damaged PATH ("'powershell' is not recognized"). Put Windows' own folders back for this
+# window so everything below (and everything the app starts later from here) can find them.
+$sys32 = Join-Path $env:SystemRoot 'System32'
+$env:Path = "$sys32;$env:SystemRoot;$sys32\Wbem;$sys32\WindowsPowerShell\v1.0;$env:Path"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 try { $Host.UI.RawUI.WindowTitle = 'Job Assist setup' } catch { }
@@ -41,17 +45,38 @@ if ($PSVersionTable.PSVersion.Major -lt 5) { Fail "Windows PowerShell 5 or newer
 if ($Root -match '[%!&^]') { Fail "Please move the JobAssist folder to a simpler place (e.g. Documents\JobAssist). Its path contains special characters: $Root" }
 function Has-Winget { return [bool](Get-Command winget -ErrorAction SilentlyContinue) }
 function Refresh-Path {
-    $env:Path = [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + [Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $env:Path = "$sys32;$env:SystemRoot;$sys32\Wbem;$sys32\WindowsPowerShell\v1.0;" +
+                [Environment]::GetEnvironmentVariable('Path', 'User') + ';' + [Environment]::GetEnvironmentVariable('Path', 'Machine')
 }
 
 # ---------------------------------------------------------------- 1. Python 3.11 - 3.13
+function Test-PythonExe($exe) {
+    try {
+        $out = & $exe -c "import sys; print(sys.version_info[:2] >= (3,11) and sys.version_info[:2] <= (3,13), sys.executable)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $out -like 'True *') { return $out.Substring(5).Trim() }
+    } catch { }
+    return $null
+}
+
 function Find-Python {
-    foreach ($v in @('3.12', '3.11', '3.13')) {
-        try {
-            $exe = & py "-$v" -c "import sys; print(sys.executable)" 2>$null
-            if ($LASTEXITCODE -eq 0 -and $exe) { return $exe.Trim() }
-        } catch { }
+    # 1) the py launcher (by name, then its standard locations, in case PATH is damaged)
+    $launchers = @('py', (Join-Path $env:SystemRoot 'py.exe'), (Join-Path $env:LOCALAPPDATA 'Programs\Python\Launcher\py.exe'))
+    foreach ($launcher in $launchers) {
+        foreach ($v in @('3.12', '3.11', '3.13')) {
+            try {
+                $exe = & $launcher "-$v" -c "import sys; print(sys.executable)" 2>$null
+                if ($LASTEXITCODE -eq 0 -and $exe) { return $exe.Trim() }
+            } catch { }
+        }
     }
+    # 2) Python's standard install folders (per-user and all-users), newest first
+    $dirs = @((Join-Path $env:LOCALAPPDATA 'Programs\Python'), $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ -and (Test-Path $_) }
+    foreach ($exe in (Get-ChildItem -Path $dirs -Filter 'python.exe' -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+                      Where-Object { $_.Directory.Name -match '^Python3(1[1-3])$' } | Sort-Object { $_.Directory.Name } -Descending)) {
+        $found = Test-PythonExe $exe.FullName
+        if ($found) { return $found }
+    }
+    # 3) whatever "python" means on PATH
     foreach ($cand in @('python', 'python3')) {
         try {
             $out = & $cand -c "import sys; print(sys.version_info[:2] >= (3,11) and sys.version_info[:2] <= (3,13), sys.executable)" 2>$null

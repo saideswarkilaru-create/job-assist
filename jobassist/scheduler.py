@@ -14,7 +14,7 @@ from datetime import date
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from . import paths
+from . import paths, winpaths
 
 TASK_NAME = "JobAssist Daily Search"
 
@@ -60,7 +60,7 @@ def task_xml(time: str) -> str:
 
 
 def _schtasks(*args) -> subprocess.CompletedProcess:
-    return subprocess.run(["schtasks", *args], capture_output=True, text=True, timeout=30,
+    return subprocess.run([winpaths.system32("schtasks.exe"), *args], capture_output=True, text=True, timeout=30,
                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 

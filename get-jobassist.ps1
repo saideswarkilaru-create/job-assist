@@ -21,7 +21,8 @@ try {
 
     Write-Host "`n>> Downloading Job Assist..." -ForegroundColor Cyan
     $ProgressPreference = 'SilentlyContinue'   # makes the download much faster in Windows PowerShell
-    Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+    if ($env:JOBASSIST_ZIP_FILE) { Copy-Item $env:JOBASSIST_ZIP_FILE $zip -Force }   # testing a zip before publishing
+    else { Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing }
     Unblock-File $zip
 
     Write-Host ">> Extracting to $dest ..." -ForegroundColor Cyan
@@ -37,7 +38,13 @@ try {
     Write-Host ">> Starting the installer..." -ForegroundColor Cyan
     $installer = Join-Path $dest 'installer\install.ps1'
     $extra = if ($env:JOBASSIST_INSTALL_ARGS) { $env:JOBASSIST_INSTALL_ARGS -split '\s+' | Where-Object { $_ } } else { @() }
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $installer @extra
+    # Some PCs have a damaged PATH ("'powershell' is not recognized"): use Windows' fixed locations instead,
+    # and put them back on PATH for this window so everything the installer starts can find them too.
+    $sys = Join-Path $env:SystemRoot 'System32'
+    $env:Path = "$sys;$env:SystemRoot;$sys\Wbem;$sys\WindowsPowerShell\v1.0;$env:Path"
+    $ps = Join-Path $sys 'WindowsPowerShell\v1.0\powershell.exe'
+    if (-not (Test-Path $ps)) { $ps = (Get-Process -Id $PID).Path }   # e.g. PowerShell 7 (pwsh.exe)
+    & $ps -NoProfile -ExecutionPolicy Bypass -File $installer @extra
     if ($LASTEXITCODE -ne 0) { throw "The installer stopped. Details: $(Join-Path $dest 'install-log.txt')" }
 }
 catch {
