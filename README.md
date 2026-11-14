@@ -8,15 +8,30 @@ It runs on your own computer. No account, subscription or AI service is needed.
 
 ---
 
-## Install (one time, about 5 minutes)
+## Install (one time, about 5–10 minutes)
 
-1. Unzip **JobAssist.zip** anywhere, for example into **Documents**.
-2. Open the **JobAssist** folder and double-click **`Install Job Assist.bat`**.
-3. Wait. It installs whatever is missing (Python and the app's parts) by itself.
-   If Windows asks *"Do you want to allow this app to make changes?"*, choose **Yes**.
-4. At the end it puts a **Job Assist** icon on your Desktop and asks *"Start Job Assist now?"*: press Enter.
+### Easiest: one line in PowerShell (recommended)
+1. Click **Start**, type **PowerShell**, open **Windows PowerShell**.
+2. Paste this line (right-click pastes) and press **Enter**:
+   ```
+   irm https://raw.githubusercontent.com/saideswarkilaru-create/job-assist/main/get-jobassist.ps1 | iex
+   ```
+3. Wait until it says **All set!**, then press **Y** to start.
 
-If anything ever looks broken, run **`Install Job Assist.bat`** again; it repairs itself.
+It downloads the latest release, unblocks it (so Windows doesn't silently block the files), extracts it to
+`Documents\JobAssist`, installs whatever is missing (Python and the app's parts) and puts a **Job Assist**
+icon on your Desktop. Run the same line again later to **update**; your data is kept.
+If Windows asks *"Do you want to allow this app to make changes?"*, choose **Yes**.
+
+### Or: from the zip
+1. Download **JobAssist.zip** from the [latest release](https://github.com/saideswarkilaru-create/job-assist/releases/latest)
+   (not *Code → Download ZIP*, which is the source code).
+2. Right-click the zip → **Properties** → tick **Unblock** → **OK**. Then right-click → **Extract All…**.
+3. Open the extracted **JobAssist** folder and double-click **`Install Job Assist.bat`**.
+
+If a window flashes and closes, or nothing happens, Windows blocked the file: use the one-line method above.
+If anything ever looks broken, run the install again; it repairs itself. Problems are explained on screen
+and saved to `install-log.txt` in the JobAssist folder.
 
 ## Start the app
 
